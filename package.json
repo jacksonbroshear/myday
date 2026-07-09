@@ -1,0 +1,13 @@
+{
+  "name": "scrum-planner",
+  "version": "1.0.0",
+  "description": "Personal scrum task tracker with AI-assisted day planning",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "express": "^4.21.0"
+  }
+}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sprintboard — personal scrum planner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Sprintboard</h1>
+      <p class="tagline">personal scrum, planned by AI</p>
+    </div>
+    <div class="sprint-stats" id="sprint-stats">
+      <div class="stat"><span id="stat-committed">0</span><label>pts committed</label></div>
+      <div class="stat"><span id="stat-done">0</span><label>pts done</label></div>
+      <div class="stat"><span id="stat-progress">0%</span><label>sprint progress</label></div>
+    </div>
+    <button id="btn-add-task" class="btn btn-primary">+ New task</button>
+  </header>
+
+  <main class="layout">
+    <section class="board" id="board">
+      <div class="column" data-column="backlog">
+        <div class="column-head"><h2>Backlog</h2><span class="count"></span></div>
+        <div class="cards" data-drop="backlog"></div>
+      </div>
+      <div class="column" data-column="today">
+        <div class="column-head"><h2>Today</h2><span class="count"></span></div>
+        <div class="cards" data-drop="today"></div>
+      </div>
+      <div class="column" data-column="inprogress">
+        <div class="column-head"><h2>In Progress</h2><span class="count"></span></div>
+        <div class="cards" data-drop="inprogress"></div>
+      </div>
+      <div class="column" data-column="done">
+        <div class="column-head"><h2>Done</h2><span class="count"></span></div>
+        <div class="cards" data-drop="done"></div>
+      </div>
+    </section>
+
+    <aside class="planner">
+      <h2>Plan my day</h2>
+      <p class="planner-hint">Claude looks at your Today + In Progress tasks (and urgent backlog items) and builds a realistic time-blocked schedule.</p>
+      <div class="planner-controls">
+        <label>Start
+          <input type="time" id="plan-start" value="09:00" />
+        </label>
+        <label>End
+          <input type="time" id="plan-end" value="17:00" />
+        </label>
+      </div>
+      <label class="planner-notes-label">Notes for the planner
+        <textarea id="plan-notes" rows="2" placeholder="e.g. meeting 13:00–14:00, low energy this morning"></textarea>
+      </label>
+      <button id="btn-plan" class="btn btn-accent">✦ Plan my day</button>
+      <div id="plan-output" class="plan-output"></div>
+    </aside>
+  </main>
+
+  <dialog id="task-dialog">
+    <form id="task-form" method="dialog">
+      <h2 id="dialog-title">New task</h2>
+      <label>Title
+        <input type="text" id="task-title" required maxlength="120" />
+      </label>
+      <label>Description
+        <textarea id="task-desc" rows="2" maxlength="500"></textarea>
+      </label>
+      <div class="form-row">
+        <label>Points
+          <select id="task-points">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="8">8</option>
+          </select>
+        </label>
+        <label>Priority
+          <select id="task-priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label>Due
+          <input type="date" id="task-due" />
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="btn-cancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
