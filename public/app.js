@@ -1,4 +1,4 @@
-/* Sprintboard — kanban state, drag & drop, and AI day planning */
+/* MyDay — kanban state, drag & drop, and AI day planning */
 
 const STORAGE_KEY = "sprintboard.tasks.v1";
 const COLUMNS = ["backlog", "today", "inprogress", "done"];
@@ -78,7 +78,7 @@ function seedTasks() {
   return [
     {
       id: crypto.randomUUID(),
-      title: "Try Sprintboard: drag me to Today",
+      title: "Try MyDay: drag me to Today",
       description: "Cards drag between columns. Estimates drive the day plan.",
       estimateMin: 30,
       due: null,

@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   const header = req.headers.authorization || "";
   const decoded = Buffer.from(header.replace(/^Basic\s+/i, ""), "base64").toString();
   if (decoded.slice(decoded.indexOf(":") + 1) === pw) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Sprintboard"');
+  res.set("WWW-Authenticate", 'Basic realm="MyDay"');
   res.status(401).send("Password required");
 });
 
@@ -146,7 +146,7 @@ app.post("/api/plan", async (req, res) => {
 
   const userPayload = {
     today: new Date().toISOString().slice(0, 10),
-    working_window: { start: dayStart || "09:00", end: dayEnd || "17:00" },
+    working_window: { start: dayStart || "07:00", end: dayEnd || "13:00" },
     user_notes: notes || "(none)",
     tasks: tasks.map((t) => ({
       id: t.id,

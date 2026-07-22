@@ -1,4 +1,4 @@
-# Sprintboard
+# MyDay
 
 A personal scrum task tracker with AI-assisted day planning. Kanban board
 (Backlog → Today → In Progress → Done) with time estimates and due dates;

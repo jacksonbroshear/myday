@@ -4,13 +4,13 @@
 # without a disk, tasks reset on every deploy.
 services:
   - type: web
-    name: sprintboard
+    name: myday
     runtime: node
     plan: starter
     buildCommand: npm install
     startCommand: npm start
     disk:
-      name: sprintboard-data
+      name: myday-data
       mountPath: /var/data
       sizeGB: 1
     envVars:
