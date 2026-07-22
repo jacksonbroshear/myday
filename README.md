@@ -40,11 +40,17 @@ localStorage. The key is only needed for the AI planner.
 
 ## How planning works
 
+The left sidebar is a chat with the planning agent. Tell it about your day
+("lunch with Jennie at noon, extend my day to 3pm") and it acts via tool
+use: it can create tasks on the board and update the visible planner
+controls (working window, notes) as you talk (`POST /api/chat`).
+
 Clicking **✦ Plan my day** sends your Today + In Progress tasks (plus any
-backlog items due within 2 days), your working window, and free-form notes
+backlog items due within 2 days), your working window, and the notes field
 to `POST /api/plan`. The server asks Claude (Opus 4.8, adaptive thinking,
 structured JSON output) for a time-blocked schedule with breaks and buffer,
-honest warnings about overcommitment, and a list of tasks to defer.
+honest warnings about overcommitment, and a list of tasks to defer — the
+plan renders as a message in the chat thread.
 
 Each task carries an estimated duration (15 min – full day); the planner
 treats estimates as optimistic, splits anything over ~2 hours into multiple

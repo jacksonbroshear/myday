@@ -2,6 +2,7 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const path = require("path");
 const fs = require("fs/promises");
+const crypto = require("crypto");
 const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
@@ -132,6 +133,192 @@ app.put("/api/tasks", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not save tasks." });
+  }
+});
+
+const CHAT_TOOLS = [
+  {
+    name: "create_task",
+    description:
+      "Add a new task to the user's board. Use when the user mentions new work to track. The task appears on the board immediately. Do NOT use this for fixed appointments (meetings, lunches, calls) — those go in the notes field via update_planner_settings, unless there is real prep work to do.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short task title." },
+        description: { type: "string", description: "Optional detail." },
+        estimate_min: {
+          type: "number",
+          description: "Estimated minutes of work (15, 30, 60, 120, 240, or 480).",
+        },
+        due: {
+          type: ["string", "null"],
+          description: "Due date YYYY-MM-DD, or null if none.",
+        },
+        column: {
+          type: "string",
+          enum: ["backlog", "today", "inprogress"],
+          description: "\"today\" for work the user intends to do today, otherwise \"backlog\".",
+        },
+      },
+      required: ["title", "estimate_min"],
+    },
+  },
+  {
+    name: "update_planner_settings",
+    description:
+      "Update the planner controls shown in the sidebar: the working window (start/end times) and/or the free-form notes field. Notes hold fixed appointments and constraints (e.g. \"Lunch with Jennie 12:00-13:00\"). The notes value you send REPLACES the field, so merge new constraints with the current notes provided in context — never drop existing ones the user hasn't cancelled.",
+    input_schema: {
+      type: "object",
+      properties: {
+        day_start: { type: "string", description: "Working window start, 24h HH:MM." },
+        day_end: { type: "string", description: "Working window end, 24h HH:MM." },
+        notes: { type: "string", description: "Full replacement text for the notes field." },
+      },
+    },
+  },
+];
+
+const CHAT_SYSTEM = `You are the planning assistant inside MyDay, a personal task tracker. You chat with the user in a sidebar next to their kanban board (Backlog / Today / In Progress / Done). The current date, board, and planner settings are provided with each message.
+
+You can act, not just talk:
+- create_task adds a work item to the board.
+- update_planner_settings changes the working window (start/end) and the notes field. Both are visible form fields the user sees update live.
+
+Guidelines:
+- Fixed appointments (meetings, lunches, calls) belong in notes with their times, not as tasks — they occupy time but aren't work items. Create a task as well only if there's real prep work.
+- If an appointment runs past the current working window, extend day_end (or day_start) to fit it when the user asks.
+- When the user mentions new work, create a task with a realistic estimate; column "today" if it's for today, otherwise "backlog" with a due date if one is implied.
+- Estimates: 15/30/60/120/240/480 minutes are the standard sizes.
+- After making changes, confirm what you did in one or two friendly sentences, and if it affects today's schedule, suggest pressing "✦ Plan my day" to rebuild the plan.
+- If the user just wants to talk through their day, be a concise, honest sounding board. Don't invent tasks they didn't mention.`;
+
+const VALID_COLUMNS = ["backlog", "today", "inprogress"];
+
+app.post("/api/chat", async (req, res) => {
+  const { messages, settings } = req.body || {};
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "No messages." });
+  }
+
+  const settingsPatch = {};
+  let tasksChanged = false;
+
+  try {
+    const board = await readTasks();
+    const context = {
+      today: new Date().toISOString().slice(0, 10),
+      planner_settings: {
+        day_start: settings?.dayStart || "07:00",
+        day_end: settings?.dayEnd || "13:00",
+        notes: settings?.notes || "(empty)",
+      },
+      board: board.map((t) => ({
+        id: t.id,
+        title: t.title,
+        estimate_min: t.estimateMin,
+        due: t.due,
+        column: t.column,
+      })),
+    };
+
+    const convo = [
+      {
+        role: "user",
+        content: `Current state:\n${JSON.stringify(context, null, 2)}`,
+      },
+      { role: "assistant", content: "Understood — I have the current board and settings." },
+      ...messages.map((m) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: String(m.content),
+      })),
+    ];
+
+    for (let turn = 0; turn < 5; turn++) {
+      const response = await client.messages.create({
+        model: "claude-opus-4-8",
+        max_tokens: 16000,
+        thinking: { type: "adaptive" },
+        system: CHAT_SYSTEM,
+        tools: CHAT_TOOLS,
+        messages: convo,
+      });
+
+      if (response.stop_reason !== "tool_use") {
+        const reply = response.content
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("\n")
+          .trim();
+        return res.json({ reply, settingsPatch, tasksChanged });
+      }
+
+      convo.push({ role: "assistant", content: response.content });
+      const results = [];
+      for (const block of response.content) {
+        if (block.type !== "tool_use") continue;
+        if (block.name === "create_task") {
+          const input = block.input || {};
+          const task = {
+            id: crypto.randomUUID(),
+            title: String(input.title || "Untitled task").slice(0, 120),
+            description: String(input.description || "").slice(0, 500),
+            estimateMin: Number(input.estimate_min) || 60,
+            due: typeof input.due === "string" ? input.due : null,
+            column: VALID_COLUMNS.includes(input.column) ? input.column : "today",
+          };
+          const list = await readTasks();
+          list.push(task);
+          await writeTasks(list);
+          tasksChanged = true;
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: `Created task "${task.title}" (${task.estimateMin} min) in ${task.column}.`,
+          });
+        } else if (block.name === "update_planner_settings") {
+          const input = block.input || {};
+          if (input.day_start) settingsPatch.dayStart = String(input.day_start);
+          if (input.day_end) settingsPatch.dayEnd = String(input.day_end);
+          if (typeof input.notes === "string") settingsPatch.notes = input.notes;
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: "Planner settings updated in the sidebar.",
+          });
+        } else {
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: `Unknown tool ${block.name}.`,
+            is_error: true,
+          });
+        }
+      }
+      convo.push({ role: "user", content: results });
+    }
+
+    res.json({
+      reply: "I made the changes but ran out of turns to summarize — check the board and settings.",
+      settingsPatch,
+      tasksChanged,
+    });
+  } catch (err) {
+    if (
+      err instanceof Anthropic.AuthenticationError ||
+      /authentication method|apiKey/i.test(err?.message || "")
+    ) {
+      return res.status(401).json({
+        error: "No valid Anthropic credentials. Set ANTHROPIC_API_KEY and restart the server.",
+      });
+    }
+    if (err instanceof Anthropic.RateLimitError) {
+      return res.status(429).json({ error: "Rate limited — try again in a minute." });
+    }
+    if (err instanceof Anthropic.APIError) {
+      return res.status(502).json({ error: `Claude API error: ${err.message}` });
+    }
+    console.error(err);
+    res.status(500).json({ error: "Chat failed unexpectedly." });
   }
 });
 

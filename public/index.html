@@ -22,6 +22,29 @@
   <div id="sync-status" class="sync-status"></div>
 
   <main class="layout">
+    <aside class="planner">
+      <h2>Plan my day</h2>
+      <div class="planner-controls">
+        <label>Start
+          <input type="time" id="plan-start" value="07:00" />
+        </label>
+        <label>End
+          <input type="time" id="plan-end" value="13:00" />
+        </label>
+      </div>
+      <label class="planner-notes-label">Notes for the planner
+        <textarea id="plan-notes" rows="2" placeholder="e.g. meeting 13:00–14:00, low energy this morning"></textarea>
+      </label>
+      <div id="chat-thread" class="chat-thread">
+        <div class="bubble bubble-assistant">Tell me about your day — I can add tasks, adjust your hours, and note appointments. When you're ready, hit ✦ Plan my day.</div>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <input type="text" id="chat-input" placeholder="e.g. lunch with Jennie at noon…" autocomplete="off" />
+        <button type="submit" class="btn btn-primary" id="btn-send">Send</button>
+      </form>
+      <button id="btn-plan" class="btn btn-accent">✦ Plan my day</button>
+    </aside>
+
     <section class="board" id="board">
       <div class="column" data-column="backlog">
         <div class="column-head"><h2>Backlog</h2><span class="count"></span></div>
@@ -41,23 +64,6 @@
       </div>
     </section>
 
-    <aside class="planner">
-      <h2>Plan my day</h2>
-      <p class="planner-hint">Claude looks at your Today + In Progress tasks (and backlog items due soon) and builds a realistic time-blocked schedule.</p>
-      <div class="planner-controls">
-        <label>Start
-          <input type="time" id="plan-start" value="07:00" />
-        </label>
-        <label>End
-          <input type="time" id="plan-end" value="13:00" />
-        </label>
-      </div>
-      <label class="planner-notes-label">Notes for the planner
-        <textarea id="plan-notes" rows="2" placeholder="e.g. meeting 13:00–14:00, low energy this morning"></textarea>
-      </label>
-      <button id="btn-plan" class="btn btn-accent">✦ Plan my day</button>
-      <div id="plan-output" class="plan-output"></div>
-    </aside>
   </main>
 
   <dialog id="task-dialog">

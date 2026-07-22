@@ -255,10 +255,104 @@ form.addEventListener("submit", () => {
   render();
 });
 
+/* ---------- planner chat ---------- */
+
+const chatThread = document.getElementById("chat-thread");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+const sendBtn = document.getElementById("btn-send");
+const chatHistory = []; // {role, content} — session-only
+
+function addBubble(role, html, { asText = true } = {}) {
+  const div = document.createElement("div");
+  div.className = `bubble bubble-${role}`;
+  if (asText) div.textContent = html;
+  else div.innerHTML = html;
+  chatThread.appendChild(div);
+  chatThread.scrollTop = chatThread.scrollHeight;
+  return div;
+}
+
+function currentSettings() {
+  return {
+    dayStart: document.getElementById("plan-start").value,
+    dayEnd: document.getElementById("plan-end").value,
+    notes: document.getElementById("plan-notes").value,
+  };
+}
+
+function applySettingsPatch(patch) {
+  const fields = {
+    dayStart: "plan-start",
+    dayEnd: "plan-end",
+    notes: "plan-notes",
+  };
+  for (const [key, id] of Object.entries(fields)) {
+    if (patch[key] == null) continue;
+    const el = document.getElementById(id);
+    el.value = patch[key];
+    el.classList.remove("field-flash");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("field-flash");
+  }
+}
+
+async function refreshTasks() {
+  try {
+    const res = await fetch("/api/tasks");
+    if (!res.ok) return;
+    tasks = migrate((await res.json()).tasks || []);
+    writeLocalBackup(tasks);
+    render();
+  } catch {
+    /* board keeps current state */
+  }
+}
+
+chatForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text || sendBtn.disabled) return;
+  chatInput.value = "";
+  sendBtn.disabled = true;
+
+  chatHistory.push({ role: "user", content: text });
+  addBubble("user", text);
+  const pending = addBubble("assistant", "…");
+  pending.classList.add("bubble-pending");
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: chatHistory, settings: currentSettings() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+
+    pending.classList.remove("bubble-pending");
+    pending.textContent = data.reply || "Done.";
+    chatHistory.push({ role: "assistant", content: data.reply || "Done." });
+
+    if (data.settingsPatch && Object.keys(data.settingsPatch).length) {
+      applySettingsPatch(data.settingsPatch);
+    }
+    if (data.tasksChanged) await refreshTasks();
+  } catch (err) {
+    pending.classList.remove("bubble-pending");
+    pending.classList.add("bubble-error");
+    pending.textContent = err.message;
+    chatHistory.pop(); // let the user retry the same message
+  } finally {
+    sendBtn.disabled = false;
+    chatInput.focus();
+    chatThread.scrollTop = chatThread.scrollHeight;
+  }
+});
+
 /* ---------- AI day planning ---------- */
 
 const planBtn = document.getElementById("btn-plan");
-const planOutput = document.getElementById("plan-output");
 
 planBtn.addEventListener("click", async () => {
   // Plan Today + In Progress, plus backlog items due within 2 days
@@ -271,31 +365,33 @@ planBtn.addEventListener("click", async () => {
   );
 
   if (plannable.length === 0) {
-    planOutput.innerHTML =
-      '<div class="plan-error">Nothing to plan — move some tasks into Today or In Progress first.</div>';
+    addBubble("assistant", "Nothing to plan — move some tasks into Today or In Progress first.");
     return;
   }
 
   planBtn.disabled = true;
-  planOutput.innerHTML =
-    '<div class="plan-loading">Claude is planning your day… (this can take up to a minute)</div>';
+  const pending = addBubble("assistant", "Planning your day… (this can take up to a minute)");
+  pending.classList.add("bubble-pending");
 
   try {
     const res = await fetch("/api/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tasks: plannable,
-        dayStart: document.getElementById("plan-start").value,
-        dayEnd: document.getElementById("plan-end").value,
-        notes: document.getElementById("plan-notes").value,
-      }),
+      body: JSON.stringify({ tasks: plannable, ...currentSettings() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    pending.remove();
     renderPlan(data);
+    // Let the chat agent know a plan exists so follow-up conversation has context.
+    chatHistory.push({
+      role: "assistant",
+      content: `[I generated a day plan] ${data.summary}`,
+    });
   } catch (err) {
-    planOutput.innerHTML = `<div class="plan-error">${escapeHtml(err.message)}</div>`;
+    pending.classList.remove("bubble-pending");
+    pending.classList.add("bubble-error");
+    pending.textContent = err.message;
   } finally {
     planBtn.disabled = false;
   }
@@ -333,7 +429,7 @@ function renderPlan(plan) {
     if (names) html += `<div class="plan-deferred">Deferred for another day: ${names}</div>`;
   }
 
-  planOutput.innerHTML = html;
+  addBubble("assistant", html, { asText: false });
 }
 
 function escapeHtml(s) {
