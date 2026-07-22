@@ -71,12 +71,12 @@ const SYSTEM_PROMPT = `You are the planning assistant inside a personal scrum ta
 
 Planning principles:
 - Be realistic, not aspirational. A day holds roughly 3-4 hours of deep focus. If the board is overcommitted, say so in warnings and defer tasks rather than cramming.
-- Story points indicate relative effort (1 ≈ under 30 min, 2 ≈ about an hour, 3 ≈ a couple of hours, 5 ≈ half a day, 8 ≈ a full day or needs splitting).
-- Schedule the hardest or highest-priority work early in the window unless the user's energy note says otherwise.
+- Each task carries the user's estimated duration in minutes (estimate_min). Treat estimates as optimistic: schedule roughly the estimated time but leave slack, and split anything estimated over ~2 hours into multiple blocks.
+- Schedule the largest or most demanding work early in the window unless the user's energy note says otherwise.
 - Tasks already "in progress" usually come first - finishing beats starting.
 - Respect due dates: anything due today or overdue must be scheduled or explicitly flagged in warnings.
 - Insert short breaks between focus blocks and leave 10-15% of the window as buffer.
-- Batch small 1-point tasks into a single shallow-work block instead of scattering them.
+- Batch small tasks (30 minutes or less) into a single shallow-work block instead of scattering them.
 - Never invent tasks. Only reference task ids that exist on the board.`;
 
 app.post("/api/plan", async (req, res) => {
@@ -96,8 +96,7 @@ app.post("/api/plan", async (req, res) => {
       id: t.id,
       title: t.title,
       description: t.description || "",
-      points: t.points,
-      priority: t.priority,
+      estimate_min: Number(t.estimateMin) || 60,
       due: t.due || null,
       column: t.column,
     })),

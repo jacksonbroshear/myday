@@ -1,9 +1,9 @@
 # Sprintboard
 
 A personal scrum task tracker with AI-assisted day planning. Kanban board
-(Backlog → Today → In Progress → Done) with story points, priorities, and due
-dates; Claude turns your committed tasks into a realistic, time-blocked plan
-for the day.
+(Backlog → Today → In Progress → Done) with time estimates and due dates;
+Claude turns your committed tasks into a realistic, time-blocked plan for
+the day.
 
 ## Run it
 
@@ -23,13 +23,14 @@ localStorage. The key is only needed for the AI planner.
 ## How planning works
 
 Clicking **✦ Plan my day** sends your Today + In Progress tasks (plus any
-high-priority or soon-due backlog items), your working window, and free-form
-notes to `POST /api/plan`. The server asks Claude (Opus 4.8, adaptive
-thinking, structured JSON output) for a time-blocked schedule with breaks and
-buffer, honest warnings about overcommitment, and a list of tasks to defer.
+backlog items due within 2 days), your working window, and free-form notes
+to `POST /api/plan`. The server asks Claude (Opus 4.8, adaptive thinking,
+structured JSON output) for a time-blocked schedule with breaks and buffer,
+honest warnings about overcommitment, and a list of tasks to defer.
 
-Story-point convention the planner uses: 1 ≈ under 30 min, 2 ≈ an hour,
-3 ≈ a couple of hours, 5 ≈ half a day, 8 ≈ needs splitting.
+Each task carries an estimated duration (15 min – full day); the planner
+treats estimates as optimistic, splits anything over ~2 hours into multiple
+blocks, and batches sub-30-minute tasks into one shallow-work block.
 
 ## Files
 

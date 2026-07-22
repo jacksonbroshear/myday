@@ -5,14 +5,26 @@ const COLUMNS = ["backlog", "today", "inprogress", "done"];
 
 let tasks = load();
 let editingId = null;
+save(); // persist any migration of old-format tasks
 
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : seedTasks();
+    return raw ? migrate(JSON.parse(raw)) : seedTasks();
   } catch {
     return seedTasks();
   }
+}
+
+// Older tasks used story points + priority; convert points to a time estimate.
+function migrate(list) {
+  const pointsToMin = { 1: 30, 2: 60, 3: 120, 5: 240, 8: 480 };
+  for (const t of list) {
+    if (t.estimateMin == null) t.estimateMin = pointsToMin[t.points] || 60;
+    delete t.points;
+    delete t.priority;
+  }
+  return list;
 }
 
 function save() {
@@ -24,9 +36,8 @@ function seedTasks() {
     {
       id: crypto.randomUUID(),
       title: "Try Sprintboard: drag me to Today",
-      description: "Cards drag between columns. Points estimate effort.",
-      points: 1,
-      priority: "medium",
+      description: "Cards drag between columns. Estimates drive the day plan.",
+      estimateMin: 30,
       due: null,
       column: "backlog",
     },
@@ -41,7 +52,7 @@ function render() {
     container.innerHTML = "";
     const colTasks = tasks.filter((t) => t.column === col);
     document.querySelector(`[data-column="${col}"] .count`).textContent =
-      colTasks.length ? `${colTasks.length} · ${sum(colTasks)} pts` : "";
+      colTasks.length ? `${colTasks.length} · ${formatMin(sumMin(colTasks))}` : "";
 
     if (colTasks.length === 0) {
       const hint = document.createElement("div");
@@ -75,8 +86,7 @@ function renderCard(t) {
   const meta = document.createElement("div");
   meta.className = "card-meta";
 
-  meta.appendChild(chip(`${t.points} pt${t.points > 1 ? "s" : ""}`, "chip-points"));
-  meta.appendChild(chip(t.priority, `chip-${t.priority}`));
+  meta.appendChild(chip(formatMin(t.estimateMin), "chip-time"));
   if (t.due) {
     const overdue = t.due < new Date().toISOString().slice(0, 10) && t.column !== "done";
     meta.appendChild(chip(`due ${t.due.slice(5)}`, `chip-due${overdue ? " overdue" : ""}`));
@@ -116,15 +126,24 @@ function chip(text, cls) {
   return s;
 }
 
-function sum(list) {
-  return list.reduce((a, t) => a + Number(t.points || 0), 0);
+function sumMin(list) {
+  return list.reduce((a, t) => a + Number(t.estimateMin || 0), 0);
+}
+
+function formatMin(min) {
+  min = Number(min) || 0;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
 }
 
 function renderStats() {
-  const committed = sum(tasks.filter((t) => t.column !== "backlog"));
-  const done = sum(tasks.filter((t) => t.column === "done"));
-  document.getElementById("stat-committed").textContent = committed;
-  document.getElementById("stat-done").textContent = done;
+  const committed = sumMin(tasks.filter((t) => t.column !== "backlog"));
+  const done = sumMin(tasks.filter((t) => t.column === "done"));
+  document.getElementById("stat-committed").textContent = formatMin(committed);
+  document.getElementById("stat-done").textContent = formatMin(done);
   document.getElementById("stat-progress").textContent = committed
     ? `${Math.round((done / committed) * 100)}%`
     : "0%";
@@ -162,8 +181,10 @@ function openDialog(id = null) {
   document.getElementById("dialog-title").textContent = t ? "Edit task" : "New task";
   document.getElementById("task-title").value = t?.title || "";
   document.getElementById("task-desc").value = t?.description || "";
-  document.getElementById("task-points").value = t?.points || 2;
-  document.getElementById("task-priority").value = t?.priority || "medium";
+  const est = document.getElementById("task-estimate");
+  est.value = [...est.options].some((o) => o.value == t?.estimateMin)
+    ? String(t.estimateMin)
+    : "60";
   document.getElementById("task-due").value = t?.due || "";
   dialog.showModal();
 }
@@ -175,8 +196,7 @@ form.addEventListener("submit", () => {
   const data = {
     title: document.getElementById("task-title").value.trim(),
     description: document.getElementById("task-desc").value.trim(),
-    points: Number(document.getElementById("task-points").value),
-    priority: document.getElementById("task-priority").value,
+    estimateMin: Number(document.getElementById("task-estimate").value),
     due: document.getElementById("task-due").value || null,
   };
   if (!data.title) return;
@@ -195,13 +215,13 @@ const planBtn = document.getElementById("btn-plan");
 const planOutput = document.getElementById("plan-output");
 
 planBtn.addEventListener("click", async () => {
-  // Plan Today + In Progress, plus urgent backlog items (due within 2 days or high priority)
+  // Plan Today + In Progress, plus backlog items due within 2 days
   const soon = new Date(Date.now() + 2 * 86400e3).toISOString().slice(0, 10);
   const plannable = tasks.filter(
     (t) =>
       t.column === "today" ||
       t.column === "inprogress" ||
-      (t.column === "backlog" && ((t.due && t.due <= soon) || t.priority === "high"))
+      (t.column === "backlog" && t.due && t.due <= soon)
   );
 
   if (plannable.length === 0) {

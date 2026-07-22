@@ -13,8 +13,8 @@
       <p class="tagline">personal scrum, planned by AI</p>
     </div>
     <div class="sprint-stats" id="sprint-stats">
-      <div class="stat"><span id="stat-committed">0</span><label>pts committed</label></div>
-      <div class="stat"><span id="stat-done">0</span><label>pts done</label></div>
+      <div class="stat"><span id="stat-committed">0h</span><label>time committed</label></div>
+      <div class="stat"><span id="stat-done">0h</span><label>time done</label></div>
       <div class="stat"><span id="stat-progress">0%</span><label>sprint progress</label></div>
     </div>
     <button id="btn-add-task" class="btn btn-primary">+ New task</button>
@@ -42,7 +42,7 @@
 
     <aside class="planner">
       <h2>Plan my day</h2>
-      <p class="planner-hint">Claude looks at your Today + In Progress tasks (and urgent backlog items) and builds a realistic time-blocked schedule.</p>
+      <p class="planner-hint">Claude looks at your Today + In Progress tasks (and backlog items due soon) and builds a realistic time-blocked schedule.</p>
       <div class="planner-controls">
         <label>Start
           <input type="time" id="plan-start" value="09:00" />
@@ -69,20 +69,14 @@
         <textarea id="task-desc" rows="2" maxlength="500"></textarea>
       </label>
       <div class="form-row">
-        <label>Points
-          <select id="task-points">
-            <option value="1">1</option>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="5">5</option>
-            <option value="8">8</option>
-          </select>
-        </label>
-        <label>Priority
-          <select id="task-priority">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
+        <label>Estimated time
+          <select id="task-estimate">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60" selected>1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="240">4 hours</option>
+            <option value="480">Full day</option>
           </select>
         </label>
         <label>Due
