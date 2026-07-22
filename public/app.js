@@ -1,6 +1,7 @@
 /* MyDay — kanban state, drag & drop, and AI day planning */
 
-const STORAGE_KEY = "sprintboard.tasks.v1";
+const STORAGE_KEY = "myday.tasks.v1";
+const LEGACY_STORAGE_KEY = "sprintboard.tasks.v1"; // pre-rename backup key
 const COLUMNS = ["backlog", "today", "inprogress", "done"];
 
 let tasks = [];
@@ -31,7 +32,8 @@ async function init() {
 
 function readLocalBackup() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     return raw ? migrate(JSON.parse(raw)) : [];
   } catch {
     return [];
@@ -40,6 +42,7 @@ function readLocalBackup() {
 
 function writeLocalBackup(list) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
 }
 
 async function pushTasks(list) {
