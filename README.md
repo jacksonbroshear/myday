@@ -10,9 +10,12 @@ for the day.
 ```sh
 cd scrum-planner
 npm install
-export ANTHROPIC_API_KEY=sk-ant-...   # required for the "Plan my day" feature
+cp .env.example .env                   # then paste your Anthropic API key into .env
 npm start                              # http://localhost:3111
 ```
+
+The server reads `ANTHROPIC_API_KEY` from `.env` (gitignored) or the
+environment — the key is required only for the "Plan my day" feature.
 
 The board itself works with no API key — tasks persist in your browser's
 localStorage. The key is only needed for the AI planner.
