@@ -1,10 +1,27 @@
 require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const path = require("path");
+const fs = require("fs/promises");
 const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
 const PORT = process.env.PORT || 3111;
+
+// Where tasks are persisted. Locally this is a gitignored ./data/tasks.json;
+// on a deploy, point DATA_FILE at a persistent volume (see render.yaml).
+const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "data", "tasks.json");
+
+// Optional shared-password gate for public deployments: set APP_PASSWORD and
+// the whole site (UI + API) requires it via HTTP Basic auth. Off when unset.
+app.use((req, res, next) => {
+  const pw = process.env.APP_PASSWORD;
+  if (!pw) return next();
+  const header = req.headers.authorization || "";
+  const decoded = Buffer.from(header.replace(/^Basic\s+/i, ""), "base64").toString();
+  if (decoded.slice(decoded.indexOf(":") + 1) === pw) return next();
+  res.set("WWW-Authenticate", 'Basic realm="Sprintboard"');
+  res.status(401).send("Password required");
+});
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -78,6 +95,45 @@ Planning principles:
 - Insert short breaks between focus blocks and leave 10-15% of the window as buffer.
 - Batch small tasks (30 minutes or less) into a single shallow-work block instead of scattering them.
 - Never invent tasks. Only reference task ids that exist on the board.`;
+
+async function readTasks() {
+  try {
+    return JSON.parse(await fs.readFile(DATA_FILE, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+async function writeTasks(tasks) {
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+  const tmp = `${DATA_FILE}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(tasks, null, 2));
+  await fs.rename(tmp, DATA_FILE);
+}
+
+app.get("/api/tasks", async (req, res) => {
+  try {
+    res.json({ tasks: await readTasks() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not read tasks." });
+  }
+});
+
+app.put("/api/tasks", async (req, res) => {
+  const { tasks } = req.body || {};
+  if (!Array.isArray(tasks)) {
+    return res.status(400).json({ error: "Body must be { tasks: [...] }." });
+  }
+  try {
+    await writeTasks(tasks);
+    res.json({ ok: true, count: tasks.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not save tasks." });
+  }
+});
 
 app.post("/api/plan", async (req, res) => {
   const { tasks, dayStart, dayEnd, notes } = req.body || {};

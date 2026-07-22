@@ -3,17 +3,57 @@
 const STORAGE_KEY = "sprintboard.tasks.v1";
 const COLUMNS = ["backlog", "today", "inprogress", "done"];
 
-let tasks = load();
+let tasks = [];
 let editingId = null;
-save(); // persist any migration of old-format tasks
 
-function load() {
+// Tasks live on the server (data/tasks.json). localStorage is kept as an
+// offline backup and as the migration source for pre-server boards.
+async function init() {
+  try {
+    const res = await fetch("/api/tasks");
+    if (!res.ok) throw new Error(`GET /api/tasks ${res.status}`);
+    let serverTasks = migrate((await res.json()).tasks || []);
+    if (serverTasks.length === 0) {
+      const local = readLocalBackup();
+      if (local.length) {
+        serverTasks = local; // one-time migration of the old browser-only board
+        await pushTasks(serverTasks);
+      }
+    }
+    tasks = serverTasks.length ? serverTasks : seedTasks();
+  } catch {
+    tasks = readLocalBackup(); // offline fallback
+    setSyncStatus(false);
+  }
+  writeLocalBackup(tasks);
+  render();
+}
+
+function readLocalBackup() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? migrate(JSON.parse(raw)) : seedTasks();
+    return raw ? migrate(JSON.parse(raw)) : [];
   } catch {
-    return seedTasks();
+    return [];
   }
+}
+
+function writeLocalBackup(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+async function pushTasks(list) {
+  const res = await fetch("/api/tasks", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tasks: list }),
+  });
+  if (!res.ok) throw new Error(`PUT /api/tasks ${res.status}`);
+}
+
+function setSyncStatus(ok) {
+  const el = document.getElementById("sync-status");
+  el.textContent = ok ? "" : "⚠ not synced — changes saved only in this browser";
 }
 
 // Older tasks used story points + priority; convert points to a time estimate.
@@ -28,7 +68,10 @@ function migrate(list) {
 }
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  writeLocalBackup(tasks);
+  pushTasks(tasks)
+    .then(() => setSyncStatus(true))
+    .catch(() => setSyncStatus(false));
 }
 
 function seedTasks() {
@@ -297,4 +340,4 @@ function escapeHtml(s) {
   );
 }
 
-render();
+init();

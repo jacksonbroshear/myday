@@ -17,6 +17,24 @@ npm start                              # http://localhost:3111
 The server reads `ANTHROPIC_API_KEY` from `.env` (gitignored) or the
 environment — the key is required only for the "Plan my day" feature.
 
+Tasks are stored server-side in `data/tasks.json` (gitignored). The browser
+keeps a localStorage backup and falls back to it if the server is
+unreachable; a pre-server board is migrated up automatically on first load.
+
+## Deploying
+
+The app is deploy-ready for any Node host:
+
+- `PORT` — listening port (default 3111)
+- `DATA_FILE` — where tasks persist; point it at a persistent volume
+- `ANTHROPIC_API_KEY` — server-side secret for the planner
+- `APP_PASSWORD` — **set this on any public deploy.** It gates the whole
+  site behind a password (HTTP Basic auth), so strangers can't read your
+  tasks or spend your API credits.
+
+A ready-made `render.yaml` is included: connect the repo on Render, paste
+the two secrets in the dashboard, and it deploys with a persistent disk.
+
 The board itself works with no API key — tasks persist in your browser's
 localStorage. The key is only needed for the AI planner.
 

@@ -87,6 +87,15 @@ body {
 .btn-accent:hover { background: #0b5e58; }
 .btn-accent:disabled { opacity: 0.6; cursor: wait; }
 
+.sync-status {
+  font-size: 0.75rem;
+  color: var(--warn);
+  padding: 0 1.5rem;
+}
+.sync-status:not(:empty) {
+  padding-top: 0.5rem;
+}
+
 /* ---------- layout ---------- */
 .layout {
   display: grid;

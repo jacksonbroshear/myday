@@ -1,0 +1,22 @@
+# One-click deploy config for Render (https://render.com).
+# Connect the GitHub repo, and Render picks this up automatically.
+# Note: persistent disks require a paid instance type (~$7/mo Starter);
+# without a disk, tasks reset on every deploy.
+services:
+  - type: web
+    name: sprintboard
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: sprintboard-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_FILE
+        value: /var/data/tasks.json
+      - key: ANTHROPIC_API_KEY
+        sync: false # paste in the Render dashboard, never committed
+      - key: APP_PASSWORD
+        sync: false # required on a public deploy: gates the UI and both APIs
