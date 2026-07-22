@@ -8,7 +8,7 @@ the day.
 ## Run it
 
 ```sh
-cd scrum-planner
+cd myday
 npm install
 cp .env.example .env                   # then paste your Anthropic API key into .env
 npm start                              # http://localhost:3111

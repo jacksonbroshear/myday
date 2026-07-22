@@ -1,5 +1,5 @@
 {
-  "name": "scrum-planner",
+  "name": "myday",
   "version": "1.0.0",
   "description": "Personal scrum task tracker with AI-assisted day planning",
   "main": "server.js",
