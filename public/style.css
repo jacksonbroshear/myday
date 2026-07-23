@@ -110,6 +110,14 @@ body {
   .layout { grid-template-columns: 1fr; }
 }
 
+/* ---------- workspace (board + schedule) ---------- */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
 /* ---------- board ---------- */
 .board {
   display: grid;
@@ -315,9 +323,6 @@ body {
 .bubble-pending { color: var(--ink-soft); font-style: italic; }
 .bubble-error { background: #fee2e2; color: var(--danger); border-color: #fecaca; }
 
-.bubble .plan-summary { margin: 0 0 0.6rem; }
-.bubble .timeline { margin: 0; }
-
 .chat-form {
   display: flex;
   gap: 0.5rem;
@@ -343,16 +348,46 @@ body {
 
 .field-flash { animation: field-flash 1.6s ease-out; }
 
-/* ---------- plan output (rendered inside chat bubbles) ---------- */
-.plan-summary {
-  font-size: 0.85rem;
-  background: var(--accent-soft);
-  border-radius: 8px;
-  padding: 0.6rem 0.7rem;
-  margin-bottom: 0.7rem;
+/* ---------- day schedule panel (under the board) ---------- */
+.plan-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem 1.1rem;
 }
 
-.timeline { display: flex; flex-direction: column; gap: 0.45rem; }
+.plan-panel[hidden] { display: none; }
+
+.plan-panel-head h2 {
+  margin: 0 0 0.7rem;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 1.15rem;
+}
+
+.plan-panel-loading { font-size: 0.9rem; color: var(--ink-soft); }
+.plan-panel-error {
+  font-size: 0.9rem;
+  background: #fee2e2;
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+}
+
+.plan-summary {
+  font-size: 0.88rem;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Wide panel: flow the time blocks into columns, preserving reading order. */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.45rem;
+}
 
 .block {
   display: grid;

@@ -353,6 +353,13 @@ chatForm.addEventListener("submit", async (e) => {
 /* ---------- AI day planning ---------- */
 
 const planBtn = document.getElementById("btn-plan");
+const planPanel = document.getElementById("plan-panel");
+
+function showPlanPanel(html) {
+  planPanel.innerHTML = html;
+  planPanel.hidden = false;
+  planPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
 
 planBtn.addEventListener("click", async () => {
   // Plan Today + In Progress, plus backlog items due within 2 days
@@ -365,13 +372,14 @@ planBtn.addEventListener("click", async () => {
   );
 
   if (plannable.length === 0) {
-    addBubble("assistant", "Nothing to plan — move some tasks into Today or In Progress first.");
+    showPlanPanel(
+      '<div class="plan-panel-error">Nothing to plan — move some tasks into Today or In Progress first.</div>'
+    );
     return;
   }
 
   planBtn.disabled = true;
-  const pending = addBubble("assistant", "Planning your day… (this can take up to a minute)");
-  pending.classList.add("bubble-pending");
+  showPlanPanel('<div class="plan-panel-loading">Planning your day… (this can take up to a minute)</div>');
 
   try {
     const res = await fetch("/api/plan", {
@@ -381,7 +389,6 @@ planBtn.addEventListener("click", async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    pending.remove();
     renderPlan(data);
     // Let the chat agent know a plan exists so follow-up conversation has context.
     chatHistory.push({
@@ -389,9 +396,7 @@ planBtn.addEventListener("click", async () => {
       content: `[I generated a day plan] ${data.summary}`,
     });
   } catch (err) {
-    pending.classList.remove("bubble-pending");
-    pending.classList.add("bubble-error");
-    pending.textContent = err.message;
+    showPlanPanel(`<div class="plan-panel-error">${escapeHtml(err.message)}</div>`);
   } finally {
     planBtn.disabled = false;
   }
@@ -399,7 +404,8 @@ planBtn.addEventListener("click", async () => {
 
 function renderPlan(plan) {
   const byId = Object.fromEntries(tasks.map((t) => [t.id, t]));
-  let html = `<div class="plan-summary">${escapeHtml(plan.summary)}</div><div class="timeline">`;
+  let html = `<div class="plan-panel-head"><h2>Today's schedule</h2></div>`;
+  html += `<div class="plan-summary">${escapeHtml(plan.summary)}</div><div class="timeline">`;
 
   for (const b of plan.schedule) {
     const taskTitle = b.task_id && byId[b.task_id] ? byId[b.task_id].title : null;
@@ -429,7 +435,7 @@ function renderPlan(plan) {
     if (names) html += `<div class="plan-deferred">Deferred for another day: ${names}</div>`;
   }
 
-  addBubble("assistant", html, { asText: false });
+  showPlanPanel(html);
 }
 
 function escapeHtml(s) {

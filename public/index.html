@@ -45,24 +45,28 @@
       <button id="btn-plan" class="btn btn-accent">✦ Plan my day</button>
     </aside>
 
-    <section class="board" id="board">
-      <div class="column" data-column="backlog">
-        <div class="column-head"><h2>Backlog</h2><span class="count"></span></div>
-        <div class="cards" data-drop="backlog"></div>
-      </div>
-      <div class="column" data-column="today">
-        <div class="column-head"><h2>Today</h2><span class="count"></span></div>
-        <div class="cards" data-drop="today"></div>
-      </div>
-      <div class="column" data-column="inprogress">
-        <div class="column-head"><h2>In Progress</h2><span class="count"></span></div>
-        <div class="cards" data-drop="inprogress"></div>
-      </div>
-      <div class="column" data-column="done">
-        <div class="column-head"><h2>Done</h2><span class="count"></span></div>
-        <div class="cards" data-drop="done"></div>
-      </div>
-    </section>
+    <div class="workspace">
+      <section class="board" id="board">
+        <div class="column" data-column="backlog">
+          <div class="column-head"><h2>Backlog</h2><span class="count"></span></div>
+          <div class="cards" data-drop="backlog"></div>
+        </div>
+        <div class="column" data-column="today">
+          <div class="column-head"><h2>Today</h2><span class="count"></span></div>
+          <div class="cards" data-drop="today"></div>
+        </div>
+        <div class="column" data-column="inprogress">
+          <div class="column-head"><h2>In Progress</h2><span class="count"></span></div>
+          <div class="cards" data-drop="inprogress"></div>
+        </div>
+        <div class="column" data-column="done">
+          <div class="column-head"><h2>Done</h2><span class="count"></span></div>
+          <div class="cards" data-drop="done"></div>
+        </div>
+      </section>
+
+      <section id="plan-panel" class="plan-panel" hidden></section>
+    </div>
 
   </main>
 
