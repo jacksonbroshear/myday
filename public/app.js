@@ -2,6 +2,7 @@
 
 const STORAGE_KEY = "myday.tasks.v1";
 const LEGACY_STORAGE_KEY = "sprintboard.tasks.v1"; // pre-rename backup key
+const NOTES_KEY = "myday.notes"; // offline backup of the persistent notes field
 const COLUMNS = ["backlog", "today", "inprogress", "done"];
 
 let tasks = [];
@@ -28,6 +29,46 @@ async function init() {
   }
   writeLocalBackup(tasks);
   render();
+  await loadSettings();
+}
+
+// The notes field persists across days (data/settings.json), unlike the
+// working-window times which reset to their defaults each session.
+async function loadSettings() {
+  const notesEl = document.getElementById("plan-notes");
+  try {
+    const res = await fetch("/api/settings");
+    if (!res.ok) throw new Error(`GET /api/settings ${res.status}`);
+    const { notes } = await res.json();
+    notesEl.value = notes || "";
+    localStorage.setItem(NOTES_KEY, notesEl.value);
+  } catch {
+    notesEl.value = localStorage.getItem(NOTES_KEY) || ""; // offline fallback
+  }
+  // Save as the user types (debounced) and immediately on blur.
+  let timer;
+  notesEl.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(saveNotes, 700);
+  });
+  notesEl.addEventListener("blur", () => {
+    clearTimeout(timer);
+    saveNotes();
+  });
+}
+
+async function saveNotes() {
+  const notes = document.getElementById("plan-notes").value;
+  localStorage.setItem(NOTES_KEY, notes);
+  try {
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes }),
+    });
+  } catch {
+    /* kept in localStorage; will re-sync on the next successful save */
+  }
 }
 
 function readLocalBackup() {
@@ -295,6 +336,7 @@ function applySettingsPatch(patch) {
     void el.offsetWidth; // restart the animation
     el.classList.add("field-flash");
   }
+  if (patch.notes != null) saveNotes(); // persist agent edits to notes
 }
 
 async function refreshTasks() {

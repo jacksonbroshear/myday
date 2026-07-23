@@ -21,12 +21,17 @@ Tasks are stored server-side in `data/tasks.json` (gitignored). The browser
 keeps a localStorage backup and falls back to it if the server is
 unreachable; a pre-server board is migrated up automatically on first load.
 
+The planner **notes** field persists in `data/settings.json` (saved as you
+type), so recurring constraints carry over day to day. The working-window
+times are not persisted — they reset to their defaults each session.
+
 ## Deploying
 
 The app is deploy-ready for any Node host:
 
 - `PORT` — listening port (default 3111)
 - `DATA_FILE` — where tasks persist; point it at a persistent volume
+- `SETTINGS_FILE` — where planner notes persist (defaults next to `DATA_FILE`)
 - `ANTHROPIC_API_KEY` — server-side secret for the planner
 - `APP_PASSWORD` — **set this on any public deploy.** It gates the whole
   site behind a password (HTTP Basic auth), so strangers can't read your

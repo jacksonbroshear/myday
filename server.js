@@ -12,6 +12,11 @@ const PORT = process.env.PORT || 3111;
 // on a deploy, point DATA_FILE at a persistent volume (see render.yaml).
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "data", "tasks.json");
 
+// Persistent planner settings (currently the notes field). Sits next to
+// DATA_FILE by default; override with SETTINGS_FILE on a deploy.
+const SETTINGS_FILE =
+  process.env.SETTINGS_FILE || path.join(path.dirname(DATA_FILE), "settings.json");
+
 // Optional shared-password gate for public deployments: set APP_PASSWORD and
 // the whole site (UI + API) requires it via HTTP Basic auth. Off when unset.
 app.use((req, res, next) => {
@@ -113,12 +118,54 @@ async function writeTasks(tasks) {
   await fs.rename(tmp, DATA_FILE);
 }
 
+async function readSettings() {
+  try {
+    return JSON.parse(await fs.readFile(SETTINGS_FILE, "utf8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return {};
+    throw err;
+  }
+}
+
+async function writeSettings(settings) {
+  await fs.mkdir(path.dirname(SETTINGS_FILE), { recursive: true });
+  const tmp = `${SETTINGS_FILE}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(settings, null, 2));
+  await fs.rename(tmp, SETTINGS_FILE);
+}
+
 app.get("/api/tasks", async (req, res) => {
   try {
     res.json({ tasks: await readTasks() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Could not read tasks." });
+  }
+});
+
+app.get("/api/settings", async (req, res) => {
+  try {
+    const s = await readSettings();
+    res.json({ notes: typeof s.notes === "string" ? s.notes : "" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not read settings." });
+  }
+});
+
+app.put("/api/settings", async (req, res) => {
+  const { notes } = req.body || {};
+  if (typeof notes !== "string") {
+    return res.status(400).json({ error: "Body must be { notes: string }." });
+  }
+  try {
+    const s = await readSettings();
+    s.notes = notes.slice(0, 5000);
+    await writeSettings(s);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not save settings." });
   }
 });
 
