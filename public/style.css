@@ -440,6 +440,8 @@ dialog form { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .form-row { display: flex; gap: 0.7rem; }
 
+.optional { font-weight: 400; text-transform: none; color: var(--ink-soft); opacity: 0.8; }
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
